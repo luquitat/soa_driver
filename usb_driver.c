@@ -2,6 +2,17 @@
 #include <linux/kernel.h>
 #include <linux/usb.h>
 
+
+//probe function
+//solicitó la inserción del dispositivo si y solo si ningún otro controlador se nos haya adelantado (sondeo)
+/*
+static int pen_probe(struct usb_interface *interface, const struct usb_device_id *id)
+{
+	printk(KERN_INFO "[*] UB Pen drive (%04X:%04X) conectado\n", id->idVendor, id->idProduct);
+	return 0; // indica que administraremos este dispositivo
+}
+*/
+
 static struct usb_device *device;
 
 static int pen_probe(struct usb_interface *interface, const struct usb_device_id *id)
@@ -11,7 +22,7 @@ static int pen_probe(struct usb_interface *interface, const struct usb_device_id
     int i;
 
     iface_desc = interface->cur_altsetting;
-    printk(KERN_INFO "Pen i/f %d now probed: (%04X:%04X)\n",
+    printk(KERN_INFO "Pen i/f %d seondeando: (%04X:%04X)\n",
             iface_desc->desc.bInterfaceNumber,
             id->idVendor, id->idProduct);
     printk(KERN_INFO "ID->bNumEndpoints: %02X\n",
@@ -36,40 +47,54 @@ static int pen_probe(struct usb_interface *interface, const struct usb_device_id
     return 0;
 }
 
+//disconnect
 static void pen_disconnect(struct usb_interface *interface)
 {
-    printk(KERN_INFO "Pen i/f %d now disconnected\n",
-            interface->cur_altsetting->desc.bInterfaceNumber);
+	printk(KERN_INFO "[*] UB Pen drive: %d desconectado \n", device->devnum);
+	//printk(KERN_INFO "[*] UB Pen drive desconectado \n");
 }
 
-static struct usb_device_id pen_table[] =
-{
-    { USB_DEVICE(0x058F, 0x6387) },
-    {} /* Terminating entry */
-};
-MODULE_DEVICE_TABLE (usb, pen_table);
 
-static struct usb_driver pen_driver =
+static struct usb_device_id pen_table[] = 
 {
-    .name = "pen_info",
-    .probe = pen_probe,
-    .disconnect = pen_disconnect,
-    .id_table = pen_table,
+	{USB_DEVICE(0x0951, 0x1665)}, // informacion obtenida usando el comando lsusb en la terminal
+	// {USB_DEVICE(v,p)},
+	{} //se termina la entrada
 };
+MODULE_DEVICE_TABLE(usb, pen_table);
+
+
+//usb_driver
+static struct usb_driver pen_driver = 
+{
+	.name 		= "UB - Driver usb",
+	.id_table 	= pen_table,
+	.probe 	= pen_probe,
+	.disconnect 	= pen_disconnect,
+};
+
 
 static int __init pen_init(void)
 {
-    return usb_register(&pen_driver);
+	int ret = -1;
+	printk(KERN_INFO "[*] UB Constructor del driver");
+	printk(KERN_INFO "\t Registrando driver en el Kernel");
+	ret = usb_register(&pen_driver);
+	printk(KERN_INFO "\t Registraciòn completada");
+	
+	return ret;
 }
 
 static void __exit pen_exit(void)
 {
-    usb_deregister(&pen_driver);
+	printk(KERN_INFO "[*] UB Destructor del driver");
+	usb_deregister(&pen_driver);
+	printk(KERN_INFO "Baja del driver completada");
 }
 
 module_init(pen_init);
 module_exit(pen_exit);
 
 MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Micheli - Ferraris");
-MODULE_DESCRIPTION("USB Pen Info Driver");
+MODULE_AUTHOR("UB");
+MODULE_DESCRIPTION("Registro de pendrive via usb");
